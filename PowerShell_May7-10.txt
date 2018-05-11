@@ -1,0 +1,351 @@
+#requires -version 9.0
+#region Day 1 Morning
+#powershell cli vs powershell ISE vs vscode
+#powershell version
+get-host # to get powershell version
+#what is powershell core
+
+#cmdlets is the basic form of powershell
+#cmdlets names are based on verb and noun
+#get-service    verb-noun
+
+#get list of recommended verbs
+get-verb
+
+#find commands
+get-command *
+get-command -verb get
+get-command -noun service
+get-command get-se*
+get-command -ParameterName computername
+get-command -module PowerShellGet #gets al cmdlets from a module
+#show cmdlet syntax
+get-command get-service -Syntax
+
+#get help about a cmdlet
+get-help get-service
+get-help get-service -Detailed
+get-help get-service -Examples
+get-help get-service -Full
+#bash fans can use the man alias
+man get-service
+
+#get help on a powershell topic
+get-help about_*
+get-help about_variable
+get-help about_functions
+
+#how to update help
+update-help -Force
+#help can be save offline and imported by 
+#machines without internent
+save-help -DestinationPath c:\data\help
+update-help -SourcePath c:\data\help
+
+#get-help about_alias
+#alias are used to create shortcuts for cmdlets
+#example
+dir
+#actually runs
+Get-ChildItem
+#here is the alias
+Get-Alias dir
+get-alias * #return every alias
+#create a new alias
+new-alias -name "TheCoolestAliasEver" -Value "get-service" `
+ -Description "this will list all services"
+#endregion
+#region Day 1 Afternoon
+#modules can be found on the internet, 
+#in the Remote Server Administrative Toolkit (RSAT)
+#powershell repository
+
+#show a list of modules currently loaded
+Get-Module
+#show all modules available
+get-module -ListAvailable
+
+#on powershell version 5 PowerShellGet 
+#module gives ability to retrieve modules from repositories
+#to find a module
+find-module azure
+#to install a module
+find-module azure | install-module
+#modules can also be saved off to a directory and reused for
+#disconnected machines.
+get-command -module PowerShellGet 
+
+#variables
+#always start with a $ and can be made up of alphanumeric
+#does not need to be typed
+#variables are what they contain
+$name = "bob"  #string
+$age = 30   #int
+$services = get-service  #object array
+$service = get-service w32time  #single object
+
+#view the variable by just typing the variable name
+#variable cmdlets
+get-command *-variable*
+
+#dot naming, used to just reference a single property
+$service.Name
+$service.Status
+
+#getting input from the console
+$name = read-host -Prompt "Please Enter Your Name"
+$name
+
+#use -whatif or -confirm
+get-service | stop-service -WhatIf #will validate it could stop the service
+
+#providers 
+get-psprovider
+get-psdrive
+
+#These cmdlets work with providers/drives
+get-command *-item*
+get-command *-location*
+get-command *-path*
+
+get-childitem #aka dir
+test-path c:\windows
+set-location c:\ #cd c:\
+new-item c:\data\newlycreatedfile.txt #ceate a file
+Remove-Item c:\data\newlycreatedfile.txt #remove file
+get-childitem cert:\localmachine\my #get certs from local machine personal store
+Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion #get reg key and values
+New-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion -Name Thisisatest -PropertyType String -Value yep #create new reg value
+Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion -Name Thisisatest #remove new reg value
+
+#endregion
+#region Day 2 Morning
+#working with the pipeline
+get-help about_pipeline
+#some commands can work with any object
+get-command *-object
+get-service | select-object name, status
+get-service | Group-Object status | select-object name,count
+get-service | select-object name, status | sort-object status
+
+#only use format-list or format-table to display results in cli
+get-service | format-table name,status
+get-service | select * | format-list
+
+#export objects to csv file
+get-service | select name,status | export-csv c:\services.csv
+#import from csv
+import-csv c:\services.csv | select name | get-service
+
+#use these to read files write to files
+get-command *-content
+Get-content #used to read a file line by line
+add-content # used to add to a file
+set-content #use to clear the content and write new
+clear-content #used to erase content based on critiria
+
+#the out- cmdlets are used as a terminating action.
+get-command out-*
+get-service | select name, status | Out-GridView
+#out-host is the default behavior which shows the content in the cli
+
+#get all the cmdlets that have been done through out a session
+get-history | select commandline | Add-Content c:\data\history.ps1
+get-history 
+#runs just a particular cmdlet from history
+get-history 5 | invoke-history
+
+#Object Types, Properties and Methods
+get-help about_objects
+get-help about_Properties
+get-help about_Methods
+
+get-service | get-member
+get-service | get-member -MemberType Properties
+get-service | get-member -MemberType Method
+
+
+#methods are actions
+Start-Process notepad.exe
+$process = get-Process notepad*
+$process.kill()
+
+get-process | get-member -MemberType Method
+
+#need to explain type strict member better!!!
+
+#string expansion
+$name = "Bob"
+Write-host 'My name is $name'
+Write-host "My name is $name"
+$service = get-service w32time
+Write-host "This service is: $service"
+write-host "This service is: $service.name"
+write-host "This service is: $($service.name)"
+
+#endregion
+#region Day 2 Afternoon
+#pipeline filters
+get-service | where-object name -eq "W32time"
+get-service | where-object {$_.name -eq "W32Time" -and $_.status -eq "Running"}
+
+#when you need to process multiple things per object
+get-service | foreach-object {
+    $_ | stop-service -WhatIf
+    $_ | start-service -whatif
+}
+#using pipeline variable
+get-content c:\computers.txt -PipelineVariable computer | foreach{
+    get-service -computer $computer -PipelineVariable service| where name -eq "w32time" | `
+        start-service $service -computer $computer
+}
+
+#using foreach begin,process,end
+get-service | foreach `
+    -begin{write-host "Starting"}`
+    -process{$_.name}`
+    -end{write-host "Done"}
+
+#Array
+$names = "TOM","Mark","Scott"
+$names[1] #Objects in array have to be refrenced by index
+#for the most part this is going to be the most common thing you do in powershell
+$services = get-service
+
+$PhoneNumber = "555-426-1234"
+#what if I only want to get the area code
+$phonenumber = $phonenumber -split("-")
+$phonenumber[0]
+$phonenumber = $phonenumber -join("-")
+$phonenumber
+
+#format operator
+[string]$class = 'PowerShell'
+[string]$city = 'Houston'
+[string]::Format("Im in {1} teaching {0}!",$class,$city)
+"{0:N2}" -f 12345.34546567
+
+#hashtables
+#are nice because you can define the key.
+$nameandage = @{"Tom"=24}
+$nameandage += @{"Mark"=35}
+$nameandage += @{"Scott"=50}
+$nameandage.mark
+
+#Hashtable splatting use to clean up code.  define the parameter and value
+$splat_params = @{'filter' = "samaccountname -eq 'tOM'";
+                'properties' = 'samaccountname','distinguishedname','city','Memberof';
+                'server' = "contoso.com"}
+
+get-aduser @splat_params
+
+$splat_params = @{'name' = "w32time"}
+get-service @splat_params
+
+get-service w32time | fl
+#Use hash table to create a calculated property
+
+Get-Service | Select-Object -Property name,status,
+    @{Name = 'IsItRunning'; Expression = {if($_.status -eq "Running"){$true}else{$false}}}, `
+    @{Name = 'ServiceAccount'; Expression = {$serviceName = $_.Name;
+        (Get-CimInstance -class Win32_Service | where name -eq $servicename).startname}}
+                    
+
+#endregion
+#region Day 3 Morning
+
+#endregion
+#region Day 3 Afternoon
+
+#use require statements to ensure things are available for script to run successfully
+#this has to be at the top of the script
+#requires -runasadministrator
+#requires -module azuread
+#requires -version 4.0
+
+#use script/function based comment help
+<#
+.Description
+
+.Author Bob Jones
+
+.Version 0.1
+
+.EXAMPLE
+
+#>
+
+#functions
+#-----------------------
+#use function for reusable code.  Anything that you have to type more than once
+#put into a functionl
+function getservice{
+    $functionservice = get-service
+    $functionservice
+}
+function stopservice{
+    $alistofservicetostop = getservice
+    $alistofservicetostop | stop-service -whatif
+}
+
+stopservice
+#-----------------------
+
+#Scope
+#variables are scoped to exist based on where it is created
+#Variable Created in CLI, means variable lives thoughout cli session
+#Variable Created in script last while the script is running
+#Variable created in function only last while the function runs
+$typicalvariable = 1234
+
+#Change scope Global, Script
+$Global:typicalvariable = 1234
+
+#Functions are only available during the runtime of a script
+#you can run a script using dot sourcing to make all the functions available globally
+. .\thisismyreallycoolscript.ps1
+#will import the content of the script
+#now you can run functions from within the script
+
+#loops
+#While - loop is useful for when you are waiting for something to happen before you move on
+
+restart-computer -computername randomdesktop1
+
+#this loop will not stop until the computer is back up on the network
+while(!(test-connection -ComputerName randomdesktop1)){
+    Start-Sleep -Seconds 2
+}
+get-service w32time -ComputerName randomdesktop1
+
+#for loop is great for needing to do something for a certain amount of times
+$services = get-service
+for($i=0; $i -eq 50; $i++){
+    $services[$i]
+}
+#this can also be done with
+0..50 | foreach{
+    $service[$_]
+}
+
+#foreach loop is the most common in powershell
+$services = get-service
+foreach($service in $services){
+    $service.Name
+    $service | restart-service -whatif
+}
+
+foreach($service in get-service){
+    $service.Name
+    $service | restart-service -whatif
+}
+
+#other loops
+#do while - loop runs script block before looking at exit comparison. 
+start-process notepad
+do{
+    "found notepad at $(get-date)"
+    start-sleep -seconds 2
+        $p = Get-Process
+    }while ('notepad' -in $p.Name)
+#endregion

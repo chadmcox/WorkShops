@@ -1,0 +1,388 @@
+
+#region day 1 Review
+
+#cmdlets are in verb-noun syntax
+
+get-service
+
+#cmdlets take parameters
+
+get-service -name w32time
+
+#to help find cmdlets use:
+
+Get-Command
+
+get-command *service*
+
+#can also use it to get syntax
+get-command get-service -Syntax
+
+#to get additional help about a cmdlet or other powershell capabilities use
+get-help get-service
+get-help get-service -Full
+get-help get-service -Detailed
+get-help get-service -Examples
+
+#help about powershell topics
+get-help about_*
+
+#Alias is used to shorten cmdlets, commands, functions etc
+#find all aliases being used
+get-alias
+get-alias cd
+
+new-alias -Name aliasexample -value get-service
+
+#variables are used to store temporary data into memory,  a variable by default is always what the object is that is contained
+$name = "Chad"
+
+#variables can also store arrays of data
+$services = get-service
+
+#when working with strings of data single quotes shows text just like it is.  double quotes will show the valur inside variables
+$name = "Chad"
+'Hello my name is $name'
+"Hello my name is $name"
+#in the event the variable is containing a object or you are wanting to get a cmdlet or another set of code simply use
+$service = get-service -name w32time
+"the service $($service.name) is $($service.status)"
+
+"most cmdlets have common parameters including pipelinevariable or outvariable that can be used "
+$services = get-service
+get-service -OutVariable services
+
+#when working with powershell everything is a object
+#Properties are the attributes that describe a particular instance of a object
+#methods are the actions the object is able to do.
+#to view a objects properties or methods use
+get-method
+get-service -name w32time | get-method
+
+#objects have templates that are called types.  each object  that is the same is defined by its type
+get-service -name w32time | get-method
+#the type is specified at the top
+
+#each type has a series of static methods available to them
+[datetime]::IsLeapYear(2021)
+[datetime] | get-member -Static
+
+#in the event you are unable to find a cmdlet to perform a action check the objects methods to see if it is possible
+$service = get-service -name w32time
+$service | Stop-Service
+stop-service $service
+$service.Stop()
+
+<#regions are used to seperate areas of code for read ability#>
+
+#region test region
+
+
+#endregion
+
+#cmdlets are designed to get an object and pass the object to multiple cmdlets
+get-service | Select-Object name, status | group-object status | select-object name, count
+
+#there are a few ways to filter if a cmdlet has a filter option always use the cmdlets filter.
+#if not use the where-object to filter
+
+#Notes from the wise.  Always write your scripts for read ability.  Use friendly variable names, function names and comments as much as possible
+
+#powershell can also handle math
+20*5
+20+30
+
+#endregion
+
+#region day 1 remoting
+#to log directly into a remote computers powershell session
+Enter-pssession -ComputerName DC1
+Exit-psession
+
+#when needing to run cmdlets remotely against a machine and the cmdlet doesnt have remote capability leverage the invoke-command
+Invoke-Command -ComputerName dc1,dc2 -ScriptBlock {get-service -name w32time}
+
+#for me the mosting useful aspect of remoting is being able to establish just enough admin rights so that users can only do exactly what they need to.
+#this can be done in two ways either by a remote session or by defining a role
+Demo 1, Remote Session
+
+Get-PSSessionConfiguration
+
+New-Item -Path "C:\JEAConfig" -ItemType Directory
+New-PSSessionConfigurationFile -Path "C:\JEAConfig\JEADemo.pssc"
+psedit "C:\JEAConfig\JEADemo.pssc"
+New-PSSessionConfigurationFile -Path "C:\JEAConfig\JEADemo.pssc" -full
+psedit "C:\JEAConfig\JEADemofull.pssc"
+Copy-Item -Path "C:\JEAConfig\JEADemo.pssc" -Destination "C:\JEAConfig\JEARestrictedAdmin.pssc"
+psedit "C:\JEAConfig\JEARestrictedAdmin.pssc"
+
+<#
+SessionType = 'RestrictedRemoteServer'
+TranscriptDirectory = "C:\JEAConfig\Transcripts"
+RunAsVirtualAccount = $true
+RoleDefinitions = @{'Contoso\Basic Users' = @{ VisibleCmdlets =  'Get-Service',’Get-Process’,'start-service','stop-service','restart-computer'}}
+#>
+
+Register-PSSessionConfiguration -Name 'NonAdmin' -Path "C:\JEAConfig\JEARestrictedAdmin.pssc"
+Enter-PSSession -ComputerName . -ConfigurationName NonAdmin
+
+#This works perfect really easy
+#leveraging a role
+New-Item -Path "C:\JEAConfig" -ItemType Directory
+New-PSSessionConfigurationFile -Path "C:\JEAConfig\ServerOperator.pssc"
+psedit "C:\JEAConfig\ServerOperator.pssc"
+<#
+SessionType = 'RestrictedRemoteServer'
+TranscriptDirectory = "C:\JEAConfig\Transcripts"
+RunAsVirtualAccount = $true
+RoleDefinitions = @{'contoso\Basic Users' = @{RoleCapabilities = 'ServerOperator'}}
+#>
+
+New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator' -ItemType Directory
+New-ModuleManifest -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\ServerOperator.psd1' -RootModule ServerOperator.psm1
+New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\ServerOperator.psm1' -ItemType File
+New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities' -ItemType Directory
+New-PSRoleCapabilityFile -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities\ServerOperator.psrc'
+psedit 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities\ServerOperator.psrc'
+
+<#
+VisibleCmdlets = 'Restart-Computer', 'Get-*',
+                @{
+                    Name = 'Restart-Service'
+                    Parameters = @{ Name = 'Name'; ValidateSet = 'w32time' }
+                }
+VisibleExternalCommands = 'C:\Windows\system32\cmd.exe' 
+VisibleAliases = 'Dir',’ls’
+VisibleProviders = 'FileSystem’
+#>
+Register-PSSessionConfiguration -Name 'ServerOperator' -Path "C:\JEAConfig\ServerOperator.pssc"
+Enter-PSSession -ComputerName . -ConfigurationName ServerOperator
+get-command -ParameterName ConfigurationName
+
+#endregion
+
+#region day 2 functions
+# functions are used to give code reusability and makes it easier to read.
+
+#function paramaters
+function get-tom {
+    param([int]$number,[string]$randomstring,$something=$(get-service))
+    get-service -name $servicename
+}
+
+
+function test-switch{
+    param([switch]$params,$paramn)
+    if($params){
+        $params
+    }else{
+        $paramn
+    }
+
+}
+
+#adding detailed information about your function
+function test-fun {
+    param($servicename)
+    <#
+    .SYNOPSIS 
+        this function does something cool
+    .DESCRIPTION
+        this function does something cool
+    .PARAMETER  <ParameterName>
+    .EXAMPLE
+        test-fun -servicename "w32time"
+    .INPUTS
+    .OUTPUTS
+    .NOTES
+    .LINK
+    .COMPONENT
+    .ROLE
+    .FUNCTIONALITY
+    #>
+    
+    get-service -name $service_name
+}
+
+#adding -whatif and -confirm into the functions you create
+Function Kill-Process
+{   [CmdletBinding(SupportsShouldProcess=$true,ConfirmImpact="High")]
+    Param([String]$name)
+
+    Process
+    {
+        $TargetProcess = Get-Process -Name $name
+        If ($pscmdlet.ShouldProcess($name, "Terminating Process"))
+        {
+            $TargetProcess.Kill()
+        }
+    }
+} 
+Kill-Process -name notepad
+
+function test{
+    [cmdletbinding(SupportsShouldProcess=$true)]
+    param()
+    get-service w32time | stop-service
+}
+test -whatif
+
+#example of defining a positional paramenter
+function test{
+Param ([parameter(Mandatory=$true,Position=0)][String[]]$MachineName)
+
+}
+
+test "whatever"
+
+#example of making a parameter mandatory
+function justforfun{
+    Param([parameter(Mandatory=$true)][AllowNull()][String]$ComputerName)
+}
+justforfun
+
+#example of giving parameter names aliases
+function get-somethingfromcomputer{
+    Param ([parameter()][alias("CN","MachineName")]
+    [String[]]$ComputerName)
+}
+
+get-somethingfromcomputer -cn srv1
+get-somethingfromcomputer -machinename srv1
+get-somethingfromcomputer -computername srv1
+
+get-service -n W32Time
+get-service -name W32Time
+
+#endregion
+
+#region day 2 regex
+"You say Yes, I say No, What does the Dev say?" -match "Dev"
+$matches[0]
+$matches[1]
+"c88y" -match "c..y"
+"bag"  -match "b[iou]g"
+"cnd"  -match "[a-e]nd"
+"are you reading a book" -match "oo"
+$matches[0]
+"a1wd23rg3efwef" -match "\w{2}"
+'a@b@s@2-3---' -match "\w{2}"
+"abcd defg" -match "(?<all>(?<word1>\w{4})(?<nonword>\W)(?<word2>\w{4}))"
+$matches['all']
+"contoso\administrator" -match "(?<Domain>\w+)\\(?<UserName>\w+)"
+
+#changing a string to an array that can be referenced by possition
+$names = "bob tom gary whatever"
+$splitname = $names -split(" ")
+$splitname[0]
+#making it back tot he string
+$splitname -join(",")
+
+#using the regex type
+[Regex]::Split("www.microsoft.com","\.")
+#using regex with a switch
+$name = 'Chad'
+ Switch -Regex ($name) {  
+  "c..d" {Write-Host $($matches.Values) -ForegroundColor Green}
+  "ad" {Write-Host $($matches.Values) -ForegroundColor yellow}
+  "\w" {Write-Host $($matches.Values) -ForegroundColor red}
+  "\d" {Write-Host $($matches.Values) -ForegroundColor red}
+  default{}
+ }
+
+ #vs if statement
+ if($name -match "c..d"){
+
+ }else{
+
+ }
+#endregion
+
+#region day 3 error handling
+#streams are used to do different things in powershell.  Best example of this is you do not want a 
+#error message caused from one mcdlet to be sent to another cmdlet.  
+#so instead of sending the error down the out stream it gets sent to the error stream instead.
+Write-Debug 
+Write-Error  
+Write-Information
+Write-Output #default and is what is passed down the pipeline
+Write-Verbose 
+Write-Warning  
+
+#demo on how to append different streams to files
+function testerrorfunction{
+    write-error -ErrorId 100 -Message "did not work"
+}
+
+get-service chad, tom, w32time 2>> c:\data\error.txt 3>> c:\data\warnings.txt | foreach{
+    testerrorfunction 2>> C:\data\error1.txt
+
+}
+
+#leverage the right kind of stream demo. sending status updats to host or show progress can slow down the script.
+function somethingcool{
+    [cmdletbinding()]
+    param($number)
+    #write-host "you just started somethingcool"
+    $services = get-service
+}
+
+measure-command {1..10000 | foreach{
+        somethingcool -number $_ 
+
+}}
+
+
+#end region
+
+#region day 3 debugging
+
+#using trap a trap can be a generic catch all trap or can be used to focus in on exact exception.
+#using trap isnt terminating
+Trap [System.DivideByZeroException] {    #This is specific trap
+    "Can not divide by ZERO!!!-->   " + $_.exception.message
+    Continue
+}
+Trap  {#This is a generic catch all trap
+    "A serious error occurred-->   " + $_.exception.message
+    Continue
+}
+
+Write-Host -ForegroundColor Yellow "`nAttempting to Divide by Zero"
+1 / $null
+
+Write-Host -ForegroundColor Yellow "`nAttempting to find a fake file"
+Get-Item c:\fakefile.txt -ErrorAction Stop
+
+Write-Host -ForegroundColor Yellow "`nAttempting an invalid command"
+1..10 | ForEach-Object {Bogus-Command} 
+
+#example of try catch finally which is terminating
+try{Get-Content \\ FileServer\HRShare\UserList.txt -ErrorAction stop}catch{$_.Exception.ItemName}
+
+#endregion
+
+
+
+#region side discussions
+#limit the number of characters allowed on each line
+get-aduser -filter {samaccountname -eq "bob.smith"} -Properties distinguishedname, samaccountname, whenchanged, description -server contoso.com -Searchscope Subtree | select distinguishedname, samaccountname, whenchanged, description | Sort-Object samaccountname | export-csv c:\data\somethingreallycool.csv -NoTypeInformation
+#____vs____
+get-aduser -filter {samaccountname -eq "bob.smith"} `
+    -Properties distinguishedname, samaccountname, whenchanged, description `
+    -server contoso.com -Searchscope Subtree | `
+        select distinguishedname, samaccountname, whenchanged, description | `
+        Sort-Object samaccountname | `
+        export-csv c:\data\somethingreallycool.csv -NoTypeInformation
+# bottom one is easier to read
+
+#hashtables
+#splatting
+$splat_example = @{'name'='w32time'}
+get-service @splat_example
+
+get-service | select name, @{n='newproperty';e={get-random -Maximum 100 -Minimum 1}}, status
+$hash_param_new = @{n='newproperty';e={get-random -Maximum 100 -Minimum 1}}
+get-service | select name, $hash_param_new, status
+
+#endregion

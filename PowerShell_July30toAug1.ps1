@@ -58,6 +58,7 @@ restart-service -name w32time -WhatIf
 restart-service -name w32time -confirm
 
 #alias
+get-help About_Aliases
 get-alias
 get-alias dir
 get-alias ls
@@ -70,6 +71,8 @@ test
 get-command *-alias*
 
 #Objects, Data types
+get-help About_Objects
+
 #what is an object
 #What is a property
 #what is a method
@@ -98,6 +101,9 @@ new-variable -name constant_service -Option Constant -Value "abcdef"
 #create a read only (can be forced to change
 new-variable -name readonly_service -Option readonly -Value "tuvwx"
 set-variable -name readonly_service -Value "abcd" -Force
+
+#"Quoting"
+get-help About_Quoting_Rules
 
 #literal strings
 $name = "Tom"
@@ -135,6 +141,7 @@ save-help -DestinationPath C:\data\helpsave
 update-help -SourcePath c:\data\helpsave
 
 #script blocks
+get-help About_Script_Blocks
 #script blocks are areas within cmdlets, conditional statements, and functions
 #that allow you to type additional statements that need to be run inside of the cmdlet, function, statement
 #script block statements exist between {} braces
@@ -157,6 +164,8 @@ function scriptblockexample {
 #for the function, then has code that inside script blocks
 #functions are idea or reusable code.  if you have to type anything more than ones and if its more
 #complicated or several repeated lines then a simple cmdlet consider putting in a function
+get-help About_Functions
+
 function get-abcservice{
     $service = get-service -name w32time
     stop-service $service
@@ -176,6 +185,7 @@ function get-abcservice{
     return $blah
 }
 #remoting
+get-help About_Remote
 #cmdlets that use -computername are not using windows remoting
 get-command -ParameterName computername
 #example
@@ -187,9 +197,13 @@ exit-psesssion
 #when just needing to run one cmdlet that doesnt have built in remoting
 invoke-command -ComputerName dc1 -ScriptBlock {get-childitem c:\data}
 
+#core commands
+gt-help About_Core_Commands
+
 #provider
 #providers are installed by default and also as part of modules
 #providers give powershell the ability to navigate and interface with certain
+get-help About_Providers
 #data structures as if it is a file system drive
 get-psprovider
 #get drives already mounted using the providers
@@ -232,6 +246,7 @@ Remove-Item -Path HKCU:\Intrepid
 Add-Content -Value "this will be added to a file" -Path c:\data\file.txt
 get-content -Path c:\data\file.txt
 #path cmdlets
+get-help about_Locations
 test-path -Path c:\data\file.txt
 split-path -Path c:\data\file.txt -Parent
 split-path -Path c:\data\file.txt -leaf
@@ -241,6 +256,7 @@ set-location c:\data
 #just save cmdlets in a file and save the file as a ps1
 
 #execution policy remotesigned is default
+get-help About_Execution_Policies
 Get-ExecutionPolicy
 Get-ExecutionPolicy -List
 Set-ExecutionPolicy -ExecutionPolicy Undefined
@@ -254,6 +270,7 @@ Multi line comment
 
 # Requires statements go at the very top of a script
 # most common are:
+get-help about_requires
 #Requires -modules azure
 #Requires -runasadministrator
 #Requires -version 3.0
@@ -337,5 +354,16 @@ $size / 1PB
 #endregion
 
 #region day 3
+#Where to go find modules
+#https://www.powershellgallery.com/
+#Powershell now has the ability to connect to public and private repos
+#to see the repo currently mapped to
+Get-PSRepository
+#you are able to create a repo with a network share or using a nuget server
+get-command -module PowerShellGet 
+#find modules from public repo
+find-module az
+find-module az | install-module
+#when you have your own repo you can publish both scripts and modules
 
 #endregion

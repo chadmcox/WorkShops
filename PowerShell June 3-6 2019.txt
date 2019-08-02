@@ -1,388 +1,511 @@
 
-#region day 1 Review
+#region day 1
+#version of powershell
+Get-Host
+#Powershell core
+#https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows?view=powershell-6
 
-#cmdlets are in verb-noun syntax
+#Windows Powershell
+#This gets updated as part of the windows management framework
+#https://www.microsoft.com/en-us/download/details.aspx?id=54616
 
-get-service
+#get-history
+$MaximumHistoryCount #4096 is the default
+get-history
+(get-history).CommandLine
+(get-history).CommandLine | add-content c:\data\history.ps1
 
-#cmdlets take parameters
+#collapsible code
+<#regions#>
+#region example
 
-get-service -name w32time
+#endregion
 
-#to help find cmdlets use:
+#commands opens in seperate process
+ping 192.168.1.20
+#cmdlets runs in same powershell process.
+Test-NetConnection -ComputerName 192.168.1.20
 
-Get-Command
+#cmdlets are made up of verb-noun
+Get-Service #verb-noun
+get-verb #show a list of recommended verbs
 
-get-command *service*
+#Has parameters and switches
+get-service -name w32time #just param
+stop-service -name w32time -Force #with switch
 
-#can also use it to get syntax
+#find cmdlets
+Get-Command #list all
+get-command *-service #using wildcard
+get-command get-* #using wildcard
+
+#find commands by verb
+get-command -Verb get
+#find commands by noun
+get-command -noun service
+#find command by parameter 
+get-command -ParameterName computername
+#only show cmdlets
+get-command -CommandType Cmdlet
+
+#show-command is worthless
+
+#find cmdlet syntax
 get-command get-service -Syntax
 
-#to get additional help about a cmdlet or other powershell capabilities use
-get-help get-service
-get-help get-service -Full
-get-help get-service -Detailed
-get-help get-service -Examples
+#risk mitigation parameters
+restart-service -name w32time -WhatIf
+restart-service -name w32time -confirm
 
-#help about powershell topics
-get-help about_*
-
-#Alias is used to shorten cmdlets, commands, functions etc
-#find all aliases being used
+#alias
+get-help About_Aliases
 get-alias
-get-alias cd
+get-alias dir
+get-alias ls
 
-new-alias -Name aliasexample -value get-service
+#should never have to use new-alias
+new-alias -name test -Value "get-service"
+test
 
-#variables are used to store temporary data into memory,  a variable by default is always what the object is that is contained
-$name = "Chad"
+#no way to clear alias
+get-command *-alias*
 
-#variables can also store arrays of data
-$services = get-service
+#Objects, Data types
+get-help About_Objects
 
-#when working with strings of data single quotes shows text just like it is.  double quotes will show the valur inside variables
-$name = "Chad"
-'Hello my name is $name'
-"Hello my name is $name"
-#in the event the variable is containing a object or you are wanting to get a cmdlet or another set of code simply use
+#what is an object
+#What is a property
+#what is a method
+#what is a type
+
+get-service | get-member
+get-service | get-member -MemberType Property
+#properties with just set are read only and get;set are read and write
+get-service | get-member -MemberType method
+
+#even a string is a object / type
+" " | get-member
+
+#variable
+#always name variables describing what it contains
+#variables start with a $
+
+Get-Help about_Automatic_Variables
+get-help about_Variables
+#display all variables
+get-variable
+#user defined variable
 $service = get-service -name w32time
-"the service $($service.name) is $($service.status)"
+#create a constant variable not able to change
+new-variable -name constant_service -Option Constant -Value "abcdef"
+#create a read only (can be forced to change
+new-variable -name readonly_service -Option readonly -Value "tuvwx"
+set-variable -name readonly_service -Value "abcd" -Force
 
-"most cmdlets have common parameters including pipelinevariable or outvariable that can be used "
-$services = get-service
-get-service -OutVariable services
+#"Quoting"
+get-help About_Quoting_Rules
 
-#when working with powershell everything is a object
-#Properties are the attributes that describe a particular instance of a object
-#methods are the actions the object is able to do.
-#to view a objects properties or methods use
-get-method
-get-service -name w32time | get-method
+#literal strings
+$name = "Tom"
+'My name is $name'
+#Expanded strings
+"My Name is $name"
 
-#objects have templates that are called types.  each object  that is the same is defined by its type
-get-service -name w32time | get-method
-#the type is specified at the top
+$service = get-service -name W32Time
+write-host "Service: $service.name is in a status of $service.status"
+write-host "Service: $($service.name) is in a status of $($service.status)"
 
-#each type has a series of static methods available to them
-[datetime]::IsLeapYear(2021)
-[datetime] | get-member -Static
-
-#in the event you are unable to find a cmdlet to perform a action check the objects methods to see if it is possible
-$service = get-service -name w32time
-$service | Stop-Service
-stop-service $service
-$service.Stop()
-
-<#regions are used to seperate areas of code for read ability#>
-
-#region test region
-
+#next line / line continuation 
+get-service -name W32Time,netlogon | `
+    select name, status | where name -ne "windows" | `
+        export-csv c:\data\service_results.csv
 
 #endregion
 
-#cmdlets are designed to get an object and pass the object to multiple cmdlets
-get-service | Select-Object name, status | group-object status | select-object name, count
+#region day2
 
-#there are a few ways to filter if a cmdlet has a filter option always use the cmdlets filter.
-#if not use the where-object to filter
+#my opinion: basic pipeline should be taught here
 
-#Notes from the wise.  Always write your scripts for read ability.  Use friendly variable names, function names and comments as much as possible
+#help
+get-help about_help
 
-#powershell can also handle math
-20*5
-20+30
+get-help get-service -Examples
+get-help get-service -full
+get-help get-service -Detailed
 
-#endregion
 
-#region day 1 remoting
-#to log directly into a remote computers powershell session
-Enter-pssession -ComputerName DC1
-Exit-psession
+get-help about_*
+get-help about_WMI
 
-#when needing to run cmdlets remotely against a machine and the cmdlet doesnt have remote capability leverage the invoke-command
-Invoke-Command -ComputerName dc1,dc2 -ScriptBlock {get-service -name w32time}
+save-help -DestinationPath C:\data\helpsave
+update-help -SourcePath c:\data\helpsave
 
-#for me the mosting useful aspect of remoting is being able to establish just enough admin rights so that users can only do exactly what they need to.
-#this can be done in two ways either by a remote session or by defining a role
-Demo 1, Remote Session
+#script blocks
+get-help About_Script_Blocks
+#script blocks are areas within cmdlets, conditional statements, and functions
+#that allow you to type additional statements that need to be run inside of the cmdlet, function, statement
+#script block statements exist between {} braces
+#example
+Measure-Command -Expression {get-service <#this is a cmdlet not a string#>}
+invoke-command -ComputerName DC1 -ScriptBlock {get-service <#this is a cmdlet not a string#>}
+#script block in conditional statements
+if(2 -gt 4){ #start script block
+    #Code that needs to run in script block
+    get-service
+} #end script block
+#script block example for function
+function scriptblockexample {
+    #Code that needs to run in script block
+    get-service
+}
 
-Get-PSSessionConfiguration
+#functions
+#functions when creating always have to start with the word function, then must contain a name 
+#for the function, then has code that inside script blocks
+#functions are idea or reusable code.  if you have to type anything more than ones and if its more
+#complicated or several repeated lines then a simple cmdlet consider putting in a function
+get-help About_Functions
 
-New-Item -Path "C:\JEAConfig" -ItemType Directory
-New-PSSessionConfigurationFile -Path "C:\JEAConfig\JEADemo.pssc"
-psedit "C:\JEAConfig\JEADemo.pssc"
-New-PSSessionConfigurationFile -Path "C:\JEAConfig\JEADemo.pssc" -full
-psedit "C:\JEAConfig\JEADemofull.pssc"
-Copy-Item -Path "C:\JEAConfig\JEADemo.pssc" -Destination "C:\JEAConfig\JEARestrictedAdmin.pssc"
-psedit "C:\JEAConfig\JEARestrictedAdmin.pssc"
+function get-abcservice{
+    $service = get-service -name w32time
+    stop-service $service
+    start-service $service
+    write-host "$(get-service -name w32time)"
+}
+#function with parameters
+#parameter names are defined like variables must be contained within a param() statement
+function get-abcservice{
+    param($name,$something,$blah)
+    $service = get-service -name $name
+    stop-service $service
+    start-service $service
+    write-host "$(get-service -name $name)"
+    write-host "$something"
+    write-host "$blah"
+    return $blah
+}
+#remoting
+get-help About_Remote
+#cmdlets that use -computername are not using windows remoting
+get-command -ParameterName computername
+#example
+get-service -name w32time -ComputerName dc1
+#interactive remote session
+enter-pssession -ComputerName dc1
+#run cmdlets, once done use
+exit-psesssion
+#when just needing to run one cmdlet that doesnt have built in remoting
+invoke-command -ComputerName dc1 -ScriptBlock {get-childitem c:\data}
 
+#core commands
+get-help About_Core_Commands
+
+#provider
+#providers are installed by default and also as part of modules
+#providers give powershell the ability to navigate and interface with certain
+get-help About_Providers
+#data structures as if it is a file system drive
+get-psprovider
+#get drives already mounted using the providers
+get-psdrive
+#mount a new drive with a provider
+New-PSDrive -Name x -PSProvider FileSystem -Root c:\windows
+#network share
+New-PSDrive -Name h -PSProvider FileSystem -Root \\memberserver\share
+
+get-command *psdrive # list the cmdlets around psdrive
+
+#commandlets used to work with psdrives
+get-command *item* -module Microsoft.PowerShell.Management
+#change current location like cd
+Set-Location c:\windows
+#list all the items inside a folder
+Get-ChildItem -Path C:\Windows
+#copy
+Copy-Item c:\Logs -Destination d:\Logs –Recurse
+#working with the registry and key values
+new-item -Path HKCU:\ -Name Powershell
+New-ItemProperty -Path HKCU:\Powershell  -Name registry1 -Value "NCC-1701"
+New-ItemProperty -Path HKCU:\Powershell  -Name registry2 -Value "NCC-74656"
+set-ItemProperty -Path HKCU:\Powershell  -Name registry1 -Value "NCC-1701-D“
+Get-item –path HKCU:\Powershell
+Rename-ItemProperty -Path HKCU:\Powershell -Name registry1 -NewName Ship1
+Rename-ItemProperty -Path HKCU:\Powershell -Name registry2 -NewName Ship2
+Get-item –path HKCU:\Powershell
+new-item -Path HKCU:\ -Name "Intrepid"
+new-item -Path HKCU:\ -Name "Galaxy"
+Copy-ItemProperty -Path HKCU:\Powershell -Destination HKCU:\Intrepid -Name Ship2
+Move-ItemProperty -Path HKCU:\Powershell -Destination HKCU:\Galaxy -name Ship1
+Get-item –path HKCU:\Intrepid
+Get-item –path HKCU:\galaxy
+Remove-ItemProperty -Path HKCU:\Galaxy -Name Ship1
+Remove-Item -Path HKCU:\Galaxy
+Remove-Item -Path HKCU:\Intrepid 
+
+#adding and reading from file
+Add-Content -Value "this will be added to a file" -Path c:\data\file.txt
+get-content -Path c:\data\file.txt
+#path cmdlets
+get-help about_Locations
+test-path -Path c:\data\file.txt
+split-path -Path c:\data\file.txt -Parent
+split-path -Path c:\data\file.txt -leaf
+set-location c:\data
+
+#scripts
+#just save cmdlets in a file and save the file as a ps1
+
+#execution policy remotesigned is default
+get-help About_Execution_Policies
+Get-ExecutionPolicy
+Get-ExecutionPolicy -List
+Set-ExecutionPolicy -ExecutionPolicy Undefined
+
+#-----single line comment
 <#
-SessionType = 'RestrictedRemoteServer'
-TranscriptDirectory = "C:\JEAConfig\Transcripts"
-RunAsVirtualAccount = $true
-RoleDefinitions = @{'Contoso\Basic Users' = @{ VisibleCmdlets =  'Get-Service',’Get-Process’,'start-service','stop-service','restart-computer'}}
+Multi line comment
+ goes in
+ here
 #>
 
-Register-PSSessionConfiguration -Name 'NonAdmin' -Path "C:\JEAConfig\JEARestrictedAdmin.pssc"
-Enter-PSSession -ComputerName . -ConfigurationName NonAdmin
+# Requires statements go at the very top of a script
+# most common are:
+get-help about_requires
+#Requires -modules azure
+#Requires -runasadministrator
+#Requires -version 3.0
 
-#This works perfect really easy
-#leveraging a role
-New-Item -Path "C:\JEAConfig" -ItemType Directory
-New-PSSessionConfigurationFile -Path "C:\JEAConfig\ServerOperator.pssc"
-psedit "C:\JEAConfig\ServerOperator.pssc"
-<#
-SessionType = 'RestrictedRemoteServer'
-TranscriptDirectory = "C:\JEAConfig\Transcripts"
-RunAsVirtualAccount = $true
-RoleDefinitions = @{'contoso\Basic Users' = @{RoleCapabilities = 'ServerOperator'}}
-#>
+#Command Precedence
+#Full path
+#Alias
+#Function
+#cmdlet
+#External command (like ping)
+#Example:
+new-alias -name ping -Value "test-netconnection"
+ping 192.168.1.2
 
-New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator' -ItemType Directory
-New-ModuleManifest -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\ServerOperator.psd1' -RootModule ServerOperator.psm1
-New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\ServerOperator.psm1' -ItemType File
-New-Item -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities' -ItemType Directory
-New-PSRoleCapabilityFile -Path 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities\ServerOperator.psrc'
-psedit 'C:\Program Files\WindowsPowerShell\Modules\ServerOperator\RoleCapabilities\ServerOperator.psrc'
+#Operators
+get-help About_Operators
 
-<#
-VisibleCmdlets = 'Restart-Computer', 'Get-*',
-                @{
-                    Name = 'Restart-Service'
-                    Parameters = @{ Name = 'Name'; ValidateSet = 'w32time' }
-                }
-VisibleExternalCommands = 'C:\Windows\system32\cmd.exe' 
-VisibleAliases = 'Dir',’ls’
-VisibleProviders = 'FileSystem’
-#>
-Register-PSSessionConfiguration -Name 'ServerOperator' -Path "C:\JEAConfig\ServerOperator.pssc"
-Enter-PSSession -ComputerName . -ConfigurationName ServerOperator
-get-command -ParameterName ConfigurationName
+#comparison operators
+
+#Powerhsell does not use =,<,>,==
+# -eq for equals
+1 -eq 1
+$emptyvariable -eq $true
+$emptyvariable -eq $false
+# -ne for not equals
+2 -ne 5
+# -gt for greater than or -ge for greater than or equal to
+4 -gt 2
+5 -ge 5
+# -lt for less than or -le for less than or equal to
+4 -le 9
+#case sensitive versions are available with prefixing with a
+# c, example -ceq, -cne   also lower case if needed
+#wild card
+# -like  * (astricks) is used for wild card before or after
+"elephant" -like "*ph*"
+$emptyvariable -like "*"
+
+# -match is used with regex where you are looking for a string match
+
+#array containment
+$services = (get-service).Name
+#does array contain w32time
+$services -contains "w32time"
+#is w32time in the array
+"w32time" -in $services
+
+#logic operators
+# -and 
+(2 -eq 2) -and (3 -eq 15)
+# -or
+(2 -eq 2) -or (3 -eq 15)
+# -not (reverse results)
+-not (2 -eq 2)
+!(2 -eq 2)
+#example if the variable is empty make results true 
+#so that we can put something in the variable
+if(!($emptyvariable)){
+    $emptyvariable = "not empty anymore"
+}
+
+#Numeric range operator
+1..6
+1..1000
+1..-100
+#character relies on regex
+#example this will retrieve all files/folders that start with j or z
+Get-ChildItem C:\windows\System32\[jz]*
+#from a to c
+Get-ChildItem C:\windows\System32\[a-c]*
+
+#byte multipliers
+#use kb,mb,gb,tb
+$size = 123456789
+$size / 1KB
+$size / 1MB
+$size / 1GB
+$size / 1TB
+$size / 1PB
 
 #endregion
 
-#region day 2 functions
-# functions are used to give code reusability and makes it easier to read.
+#region day 3
+#Where to go find modules
+#https://www.powershellgallery.com/
+#Powershell now has the ability to connect to public and private repos
+#to see the repo currently mapped to
+Get-PSRepository
+#you are able to create a repo with a network share or using a nuget server
+get-command -module PowerShellGet 
+#find modules from public repo
+find-module az
+find-module az | install-module
+#when you have your own repo you can publish both scripts and modules
 
-#function paramaters
-function get-tom {
-    param([int]$number,[string]$randomstring,$something=$(get-service))
-    get-service -name $servicename
+#pipeline
+
+#object cmdlets
+get-command *-object
+#only pass certain properties down the pipeline
+get-service | select-object name, status
+#only return first 2 objects
+get-service | select-object -first 2
+#only return the last 2 objects
+get-service | select-object -last 2
+#sort objects my a property, default is ascending
+get-service | sort-object name
+#sort objects my a property in descending
+get-service | sort-object status -Descending
+#group objects by a propert value
+get-service | group-object status
+
+#format
+#only use these as the very last cmdlet in the pipeline.
+#format is designed for the data displayed in the console
+#not data in a file.
+get-command format-*
+
+#export to a csv or other delimited file
+get-service | select-object name, status | export-csv c:\data\service.csv
+#read in the results of a csv and reference via property name
+import-csv c:\data\service.csv | foreach{
+    $_.name
 }
 
+#Out cmdlets
+get-command out-*
+get-service | select name, status | out-gridview
 
-function test-switch{
-    param([switch]$params,$paramn)
-    if($params){
-        $params
-    }else{
-        $paramn
-    }
+#some cmdlets have -passthru parameter that allow the object to continue on.
+get-command -ParameterName passthru 
 
-}
+#arrays
+$array_names = "Bob", "Gary", "Tom", "Larry"
+#in order to reference an array much know its index
+#first is always 0
+$array_names[0]
+$array_names[2]
 
-#adding detailed information about your function
-function test-fun {
-    param($servicename)
-    <#
-    .SYNOPSIS 
-        this function does something cool
-    .DESCRIPTION
-        this function does something cool
-    .PARAMETER  <ParameterName>
-    .EXAMPLE
-        test-fun -servicename "w32time"
-    .INPUTS
-    .OUTPUTS
-    .NOTES
-    .LINK
-    .COMPONENT
-    .ROLE
-    .FUNCTIONALITY
-    #>
-    
-    get-service -name $service_name
-}
+#replace an existing object
+$array_names[0] = "Peter"
 
-#adding -whatif and -confirm into the functions you create
-Function Kill-Process
-{   [CmdletBinding(SupportsShouldProcess=$true,ConfirmImpact="High")]
-    Param([String]$name)
-
-    Process
-    {
-        $TargetProcess = Get-Process -Name $name
-        If ($pscmdlet.ShouldProcess($name, "Terminating Process"))
-        {
-            $TargetProcess.Kill()
-        }
-    }
-} 
-Kill-Process -name notepad
-
-function test{
-    [cmdletbinding(SupportsShouldProcess=$true)]
-    param()
-    get-service w32time | stop-service
-}
-test -whatif
-
-#example of defining a positional paramenter
-function test{
-Param ([parameter(Mandatory=$true,Position=0)][String[]]$MachineName)
-
-}
-
-test "whatever"
-
-#example of making a parameter mandatory
-function justforfun{
-    Param([parameter(Mandatory=$true)][AllowNull()][String]$ComputerName)
-}
-justforfun
-
-#example of giving parameter names aliases
-function get-somethingfromcomputer{
-    Param ([parameter()][alias("CN","MachineName")]
-    [String[]]$ComputerName)
-}
-
-get-somethingfromcomputer -cn srv1
-get-somethingfromcomputer -machinename srv1
-get-somethingfromcomputer -computername srv1
-
-get-service -n W32Time
-get-service -name W32Time
-
-#endregion
-
-#region day 2 regex
-"You say Yes, I say No, What does the Dev say?" -match "Dev"
-$matches[0]
-$matches[1]
-"c88y" -match "c..y"
-"bag"  -match "b[iou]g"
-"cnd"  -match "[a-e]nd"
-"are you reading a book" -match "oo"
-$matches[0]
-"a1wd23rg3efwef" -match "\w{2}"
-'a@b@s@2-3---' -match "\w{2}"
-"abcd defg" -match "(?<all>(?<word1>\w{4})(?<nonword>\W)(?<word2>\w{4}))"
-$matches['all']
-"contoso\administrator" -match "(?<Domain>\w+)\\(?<UserName>\w+)"
-
-#changing a string to an array that can be referenced by possition
-$names = "bob tom gary whatever"
-$splitname = $names -split(" ")
-$splitname[0]
-#making it back tot he string
-$splitname -join(",")
-
-#using the regex type
-[Regex]::Split("www.microsoft.com","\.")
-#using regex with a switch
-$name = 'Chad'
- Switch -Regex ($name) {  
-  "c..d" {Write-Host $($matches.Values) -ForegroundColor Green}
-  "ad" {Write-Host $($matches.Values) -ForegroundColor yellow}
-  "\w" {Write-Host $($matches.Values) -ForegroundColor red}
-  "\d" {Write-Host $($matches.Values) -ForegroundColor red}
-  default{}
- }
-
- #vs if statement
- if($name -match "c..d"){
-
- }else{
-
- }
-#endregion
-
-#region day 3 error handling
-#streams are used to do different things in powershell.  Best example of this is you do not want a 
-#error message caused from one mcdlet to be sent to another cmdlet.  
-#so instead of sending the error down the out stream it gets sent to the error stream instead.
-Write-Debug 
-Write-Error  
-Write-Information
-Write-Output #default and is what is passed down the pipeline
-Write-Verbose 
-Write-Warning  
-
-#demo on how to append different streams to files
-function testerrorfunction{
-    write-error -ErrorId 100 -Message "did not work"
-}
-
-get-service chad, tom, w32time 2>> c:\data\error.txt 3>> c:\data\warnings.txt | foreach{
-    testerrorfunction 2>> C:\data\error1.txt
-
-}
-
-#leverage the right kind of stream demo. sending status updats to host or show progress can slow down the script.
-function somethingcool{
-    [cmdletbinding()]
-    param($number)
-    #write-host "you just started somethingcool"
-    $services = get-service
-}
-
-measure-command {1..10000 | foreach{
-        somethingcool -number $_ 
-
-}}
-
-
-#end region
-
-#region day 3 debugging
-
-#using trap a trap can be a generic catch all trap or can be used to focus in on exact exception.
-#using trap isnt terminating
-Trap [System.DivideByZeroException] {    #This is specific trap
-    "Can not divide by ZERO!!!-->   " + $_.exception.message
-    Continue
-}
-Trap  {#This is a generic catch all trap
-    "A serious error occurred-->   " + $_.exception.message
-    Continue
-}
-
-Write-Host -ForegroundColor Yellow "`nAttempting to Divide by Zero"
-1 / $null
-
-Write-Host -ForegroundColor Yellow "`nAttempting to find a fake file"
-Get-Item c:\fakefile.txt -ErrorAction Stop
-
-Write-Host -ForegroundColor Yellow "`nAttempting an invalid command"
-1..10 | ForEach-Object {Bogus-Command} 
-
-#example of try catch finally which is terminating
-try{Get-Content \\ FileServer\HRShare\UserList.txt -ErrorAction stop}catch{$_.Exception.ItemName}
-
-#endregion
-
-
-
-#region side discussions
-#limit the number of characters allowed on each line
-get-aduser -filter {samaccountname -eq "bob.smith"} -Properties distinguishedname, samaccountname, whenchanged, description -server contoso.com -Searchscope Subtree | select distinguishedname, samaccountname, whenchanged, description | Sort-Object samaccountname | export-csv c:\data\somethingreallycool.csv -NoTypeInformation
-#____vs____
-get-aduser -filter {samaccountname -eq "bob.smith"} `
-    -Properties distinguishedname, samaccountname, whenchanged, description `
-    -server contoso.com -Searchscope Subtree | `
-        select distinguishedname, samaccountname, whenchanged, description | `
-        Sort-Object samaccountname | `
-        export-csv c:\data\somethingreallycool.csv -NoTypeInformation
-# bottom one is easier to read
+#arrays are fixed sized so in order to add to an array the array has to be 
+#recreated
+#use
+$array_names += "Todd"
 
 #hashtables
-#splatting
-$splat_example = @{'name'='w32time'}
-get-service @splat_example
+#hash tables are used for several things
+#One benifit is being able to reference it by its index name
+$hash_example = @{'name'='bob';'age'=32}
+$hash_example["name"]
+$hash_example.add("haircolor","blonde")
+$hash_example["haircolor"]
+$hash_example.Remove("haircolor")
 
-get-service | select name, @{n='newproperty';e={get-random -Maximum 100 -Minimum 1}}, status
-$hash_param_new = @{n='newproperty';e={get-random -Maximum 100 -Minimum 1}}
-get-service | select name, $hash_param_new, status
+
+$hash_service = get-service | group status -AsHashTable -asstring
+$hash_service.Stopped
+$hash_service.running
+
+#Using a forever while loop:
+While ($true)
+{
+    Write-Host -ForegroundColor Yellow "Still True"
+} 
+#Using a while loop that will never start:
+While ($false)
+{
+    Write-Host -ForegroundColor Red "Never Run"
+} 
+#While Loops are useful for waiting until a state condition is met, like a computer responding to pings. 
+While (!(Test-Connection fakeserver -ErrorAction SilentlyContinue -count 1))
+{
+    Write-Host "Server still not Online!" -ForegroundColor Green
+} 
+
+#While loop with iteration:
+# In order to use a While Loop for Counting, we have to set up a counter variable first.
+$i = 0 
+# The Syntax is a While Statement followed by a Test that evaluates to True/False (Zero/Non-Zero).
+While($i -lt 10)
+{
+    # Write our counter value to the screen.
+    $i
+    # Increment our Counter.
+    ++$i
+} 
+
+#Even if the while statement fails the code will run once:
+Do 
+{
+    Write-Host -ForegroundColor White "Your code will always run AT LEAST once."
+} While ($false) 
+
+#If there is no end condition the loop will be forever:
+Do 
+{
+    Write-Host -ForegroundColor Yellow "You won't have to Ctrl+C this because it will only run once."
+}Until ($true) 
+
+#For (int, condition, enumerate)
+For($i = 0; $i -lt 10; ++$i)
+{
+    # Write out counter to the screen
+    $i
+} 
+
+#A simple foreach loop:
+Foreach ($service in Get-Service)
+{
+    Write-Output -InputObject $service.name
+} 
+
+get-service -PipelineVariable service | foreach{
+    Write-Output -InputObject $service.name
+}
+
+#foreach are great for arrays
+$services = get-service
+foreach($service in $services){
+    Write-Output -InputObject $service.name
+}
+
+$services | foreach{
+    $_
+}
+
+$color = "blue"
+Switch($color)
+{
+    "Cyan" {Write-Host "Cyan!" -ForegroundColor Cyan}
+    "Green" {Write-Host "Green" -ForegroundColor Green}
+    Default {write-host "This will run instead" -ForegroundColor Green} 
+}
+
 
 #endregion

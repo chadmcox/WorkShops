@@ -106,6 +106,9 @@ $service.start()
 $true | get-member
 $false | get-member
 
+get-command stop-service -Syntax
+#Stop-Service [-InputObject] <ServiceController[]> 
+
 #variable
 #always name variables describing what it contains
 #variables start with a $
@@ -163,9 +166,16 @@ get-help get-service -Examples
 get-help get-service -full
 get-help get-service -Detailed
 
-
 get-help about_*
 get-help about_WMI
+
+get-command Get-NetAdapter -Syntax
+get-help Get-NetAdapter -full
+get-netadapter | get-member
+get-command *-netadapter*
+get-netipaddress
+Get-DnsClient | get-member
+
 
 save-help -DestinationPath C:\data\helpsave
 update-help -SourcePath c:\data\helpsave
@@ -196,13 +206,13 @@ function scriptblockexample {
 #complicated or several repeated lines then a simple cmdlet consider putting in a function
 get-help About_Functions
 
-function get-abcservice{
+function get-aeroservice{
     $service = get-service -name w32time
     stop-service $service
     start-service $service
     write-host "$(get-service -name w32time)"
 }
-get-abcservice
+get-aeroservice
 #function with parameters
 #parameter names are defined like variables must be contained within a param() statement
 function get-abcservice{
@@ -236,7 +246,7 @@ invoke-command -ScriptBlock {get-culture} -Session $sessions
 invoke-command -ScriptBlock {get-culture} -computername dc1,app1
 
 #core commands
-gt-help About_Core_Commands
+get-help About_Core_Commands
 
 #provider
 #providers are installed by default and also as part of modules
@@ -295,7 +305,7 @@ split-path -Path c:\data\file.txt -Parent
 split-path -Path c:\data\file.txt -leaf
 set-location c:\data
 
-new-item c:\
+new-item c:\folder -ItemType Directory
 new-item c:\data\something.txt -ItemType File
 
 #scripts
@@ -383,7 +393,7 @@ if(!($emptyvariable)){
 }
 
 #Numeric range operator
-1..6
+1..6 -contains 5
 1..1000
 1..-100
 #character relies on regex
@@ -404,7 +414,7 @@ $size / 1PB
 #Pipeline
 get-help about_pipeline
 
-get-service | where {$_.name -eq "w32time"} | select name, displayname, state | Out-GridView
+get-service | where-object {-not ($_.name -eq "w32time")} | select-object name, displayname, state | Out-GridView
 
 
 #filtering
@@ -421,8 +431,65 @@ get-aduser -filter {name -eq "bob"} | select name
 #this is bad, every user object gets past to the where cmdlet to be filtered
 get-aduser -filter * | where {$_.name -eq "bob"} | select name
 
+get-command -ParameterName *filter*
 
 #endregion
 
 #region day 4
+
+
+#endregion
+
+
+
+#--------------------DEMO SCRIPT --------------------------------------------
+#Requires -version 5.0
+<#
+.Author
+    Chad
+.version
+    2019.10.10.1
+
+.description
+
+.example
+
+#>
+#region variables
+$path = c:\data\logs
+$error_threshold = 0
+$packages = "pack1.msi","pack2.msi"
+#endregion
+#region functions
+function uninstall-packages{
+    param()
+
+
+}
+function install-packages{
+    param($packagename)
+    invoke-expression -Command "msiexec $packagename -i -w"
+
+    return $LASTEXITCODE
+}
+function check-eventlogs{
+    $events = get-winevent -FilterHashtable @{logname='system';id=16}
+    if($event | where description -like "*something*"){
+        return $true
+        }
+}
+#endregion
+#region main
+if(!(test-path $path)){
+    new-item $path -ItemType Directory
+}
+
+foreach($package in $packages){
+    $results = install-packages -packagename $package
+    if(!($results -in 0,3010)){
+        check-eventlogs
+
+    }
+}
+
 #endregion

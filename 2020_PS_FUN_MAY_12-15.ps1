@@ -641,4 +641,170 @@ $value
 
 #endregion
 #region day 4
+#while loop - is something true run scriptblock as long as true
+$x = 0
+while ($x -lt 10)
+{
+write-host "x is currently $x"
+$x++
+    
+}
+
+while(get-service -name w32time | where status -eq "stopped"){
+    write-host "w32time is currently stopped"
+}
+#do while loop run scriptblock once look to condition if true and repeat if true
+$x = 0
+do
+{
+    write-host "x is currently $x"
+    $x++
+}
+while ($x -lt 10)
+#do until loop is just like do while but the condition needs to be false to loop back through script block
+$x = 0
+do
+{
+    write-host "x is currently $x"
+    $x++
+}
+until ($x -gt 10)
+#for loop is common used specifically needing to count
+#in the condition area it initializes the counter, test the condition, and increments the counter
+#the initilize of counter only occurs at first run of loop, the condition and increments happens each time it is ran
+for($x=0; $x -lt 10; $x++){
+    write-host "x is currently $x"
+}
+
+#foreach loop is used to enumerate through array
+#ideally if you are needing to do this use the foreach-object unless you need to store objects in memory first
+$services = get-service
+$services.count
+foreach($service in $services){
+    $service | restart-service -whatif
+}
+#foreach assigned the current object being evaluated from the array in the variable before the in
+#$service is the current object
+#this will loop through all the objects and runs the script block until there are no more objects
+#vs
+get-service -PipelineVariable service | foreach{
+    $service | restart-service -whatif
+}
+
+#if statements this allows you to check something if true then run code else run something else
+#it supports multiple conditions, recommend using switch if more than 3 elseif
+if (5 -gt 10)
+{
+    write-host "5 is less than 10"
+    }
+elseif(4 -eq 4){
+    write-host "4 is equal to 4"
+}
+elseif(6 -lt 20){
+    write-host "6 is less than 20"
+}
+else{
+    write-host "5 is not greater than 10"
+}
+
+write-host "next code"
+
+if(test-path c:\data\randomfile.txt){
+ write-host "file is found"
+}else{
+    new-item -ItemType file -Path c:\data\randomfile.txt
+}
+
+if(!(test-path c:\data\randomfile.txt)){
+    new-item -ItemType file -Path c:\data\randomfile.txt
+}
+
+if(get-service -name w32time | where status -eq "running"){
+    write-host "Hey this service is already running"
+}else{
+    start-service w32time
+}
+
+#switch statements, work like if, accept if statements only run 1 condition found true and then exits the statement
+#switch reviews each condition and excecutes the script block for each matching statement
+$numbers = 1,2,4,6,7,8,100,0
+
+switch ($numbers)
+{
+    {$_ -gt 1} {$_;write-host "greater than 1";continue}
+    {$_ -lt 10 -and $_ -gt 5} {$_;write-host "less than 10";continue}
+    {$_ -eq 4} {$_;write-host "equal to 4";continue}
+    {$_ -gt 200} {$_;write-host "greater than 100";continue}
+    default{$_;write-host "it is none of the others it is $($_)";continue}
+
+}
+
+#Almost everything we work with in powershell is an array
+#issues about arrays, they are a fixed size, so if you need to add more items to an array you have to rebuild the array
+#second is you cant easily reference objects in array because they are only indexed by position
+$precreatebogusarray = @()
+$precreatebogusarray | get-member
+
+$names = "tom","mary","bob","scott"
+$names[1..3]
+#this doesnt work
+$names['tom']
+
+$services = get-service
+$numbers = 1,2,4,6,7,8,100,0
+
+#cannot add items to an array they are a set size
+$numbers.add(20) 
+#does not add to the array
+$numbers += 20
+#this recreates the array and its content
+
+$bogus | get-member
+$precreatebogusarray = @()
+$precreatebogusarray | get-member
+
+$names = "tom","mary","bob","scott"
+$names[1..3]
+
+#hash tables are great because you can reference a item being its name
+#and you are able to add and remove content from the hashtable
+$Chad = @{}
+$chad = @{lastname="Cox" ; firstname="Chad"  ;Eyes="Blue"}
+$chad['lastname']
+$chad.Add('Gender','Male')
+
+$array_service = get-service
+$array_service[20]
+$array_service | where {$_.name -eq "w32time"}
+
+$hash_service = get-service | group-object name -AsHashTable -AsString
+$hash_service["w32time"] | select name, status
+
+$string = @"
+Name = Waldo
+Favorite game = Hide and seek
+Shirt color = Red
+Glasses = Yes
+Gender = male
+Favorite Quote = Where is waldo
+1 = the number one 
+"@ 
+$waldo = ConvertFrom-StringData -StringData $string 
+$waldo['gender']
+
+$hash = @{chad=@{lastname='cox';eyes='blue'};Tom=@{lastname='swim';eyes='bbrown'}}
+$hash['chad']
+$hash.add("bob",@{lastname='something';eyes='yellow'})
+$hash.remove("chad")
+
+#calculated properties using a hashtable
+get-service w* | select Displayname, @{Name="Is it running";Expression={if($_.status -eq "running"){$true}else{$false}}}, @{Name="SericeName";Expression={$_.name}}
+
+#splatting using a hashtable
+$param = @{name='w32time';
+           computername='dc1'}
+
+
+#not here
+get-service @param
 #endregion
